@@ -316,8 +316,8 @@ watch(() => end.value, async (val) => {
     <div v-show="!isHome" class="pack-info">
       <div class="pack-item" v-for="(e, index) in pack" :key="index" style="border: none;">
         <img v-if="e.name == '火'" src="./assets/images/fire.png" alt="" @click="recover">
-        <img v-if="e.name == '宝'" src="./assets/images/gem.png" alt="">
-        <img v-if="e.name == '铁'" src="./assets/images/iron.png" alt="">
+        <img v-if="e.name == '宝'" src="./assets/images/gem.png" alt="" @click="() => showUpgrade = true">
+        <img v-if="e.name == '铁'" src="./assets/images/iron.png" alt="" @click="() => showUpgrade = true">
         <div class="count">{{ e.count }}</div>
       </div>
       <div class="pack-item" v-for="i in (10 - pack.length)"></div>
