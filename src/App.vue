@@ -62,6 +62,11 @@ const battle = (mon) => {
     }
   }
   player.value.hp = playerHp
+  if (playerHp <= 0) {
+    home()
+    modalContent.value = 'Game over'
+    return
+  }
 }
 
 const open = async (i, j) => {
@@ -219,6 +224,8 @@ const start = async () => {
 
 const home = async () => {
   isHome.value = true
+  player.value.mp = 20
+  player.value.hp = player.value.max
 }
 
 const selectFun = async () => {
@@ -236,7 +243,7 @@ const selectFun = async () => {
 
 watch(() => end.value, async (val) => {
   if (val.hasDoor && val.hasKey) {
-    await delay(500)
+    await delay(200)
     isSuccess.value = true
   }
 }, {deep: true})
