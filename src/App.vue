@@ -12,6 +12,7 @@ const isHome = ref(true)
 const isBuild = ref(false)
 const selectList = ref([true, true, true, true, true])
 const hpList = ref([true, true, true, true, true])
+const modelContent = ref('')
 const end = ref({
   hasDoor: false,
   hasKey: false,
@@ -77,7 +78,6 @@ const open = async (i, j) => {
     player.value.hp -= 5
   }
   let name = mapData.value[i][j].name
-  console.log(name)
   if (name == 'A') {
     // 战斗
     let mon = monster.value.A
@@ -126,11 +126,11 @@ const upgrade = async () => {
   let gem = pack.value.find(item => item.name == '宝')
   let iron = pack.value.find(item => item.name == '铁')
   if (!gem || !iron) {
-    console.log('材料不足')
+    modelContent.value = 'Insufficient material'
     return
   }
   if (player.value.pack.length >= 4) {
-    console.log('背包已满')
+    modelContent.value = 'Backpack full'
     return
   }
   if (gem.count >= 2 && iron.count >= 2) {
@@ -159,7 +159,7 @@ const upgrade = async () => {
 const recover = async () => {
   let fire = pack.value.find(item => item.name == '火')
   if (!fire) {
-    console.log('材料不足')
+    modelContent.value = 'Insufficient material'
     return
   }
   if (fire.count >= 1) {
@@ -375,6 +375,12 @@ watch(() => end.value, async (val) => {
     </div>
     <div class="loading wrap" v-show="isLoading">
       <span class="loader"></span>
+    </div>
+    <div v-show="modelContent" class="modal wrap" @click="() => modelContent = ''">
+      <div class="modal-content" @click.stop>
+        <p>{{ modelContent }}</p>
+        <div class="btn" @click="() => modelContent = ''">Ok</div>
+      </div>
     </div>
   </div>
 </template>
