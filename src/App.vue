@@ -217,7 +217,7 @@ const start = async () => {
 }
 
 const home = async () => {
-  
+  isHome.value = true
 }
 
 const selectFun = async () => {
