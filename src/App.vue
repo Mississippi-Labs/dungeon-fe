@@ -177,6 +177,7 @@ const recover = async () => {
     if (pack.value[pack.value.findIndex(item => item.name == '火')].count == 0) {
       pack.value.splice(pack.value.findIndex(item => item.name == '火'), 1)
     }
+    showUpgrade.value = false
   }
 }
 
