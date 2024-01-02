@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@web3mq/client": "1.0.26-beta.1",
+    "ethers": "5.7.2",
     "sass": "^1.69.6",
     "vue": "^3.3.11"
   },

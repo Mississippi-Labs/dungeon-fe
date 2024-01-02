@@ -2,6 +2,9 @@
 import { map } from './utils/generateMap'
 import { ref, onMounted, watch } from 'vue';
 import { delay } from './utils/utils'
+import Meme from './components/Meme.vue'
+import { getUserPublicProfileRequest } from '@web3mq/client';
+import { getClient } from './utils/client';
 
 const mapData = ref(null)
 const pack = ref([])
@@ -13,6 +16,9 @@ const isBuild = ref(false)
 const selectList = ref([true, true, true, true, true])
 const hpList = ref([true, true, true, true, true])
 const modalContent = ref('')
+const clientData = ref(null)
+const msgContent = ref('')
+const groupId = 'group:80db3d7723e253bff754b83e24c12750714e76c6'
 const end = ref({
   hasDoor: false,
   hasKey: false,
@@ -241,12 +247,82 @@ const selectFun = async () => {
   isBuild.value = false
 }
 
+const sendMsg = async (msg) => {
+  console.log(msg)
+  try {
+    await clientData.value.message.sendMessage(`${+msg + 1}`);
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+const showMsg = async (msg) => {
+  console.log(msg)
+  msgContent.value = msg.content
+  setTimeout(() => {
+    msgContent.value = ''
+  }, 6000)
+}
+
+onMounted(() => {
+  const getClientFun = async () => {
+    console.log('getClientFun')
+    try {
+      let client = await getClient()
+      console.log(client)
+      const handleEvent = async (event) => {
+        if (event.type === 'channel.getList') {
+          const { channelList = [], activeChannel } = client.channel;
+          console.log(channelList, activeChannel)
+          let channel = channelList.find((item) => item.chatid == groupId)
+          if (!channelList || !channelList.length || !channel) {
+            await client.channel.joinGroup(groupId);
+          }
+          client.channel.setActiveChannel(channel)
+          clientData.value = client
+        }
+        if (event.type === 'message.getList') {
+          console.log(client.message.messageList, 'message.getList');
+          if (client.message.messageList?.length) {
+            let lastMsg = client.message.messageList[client.message.messageList.length - 1]
+            if (lastMsg) {
+              showMsg(lastMsg)
+            }
+          }
+        }
+        if (event.type === 'message.delivered') {
+          console.log(event)
+        }
+        if (event.type === 'message.send') {
+          let lastMsg = client.message.messageList[client.message.messageList.length - 1]
+          showMsg(lastMsg)
+        }
+      }
+      client.on('channel.getList', handleEvent)
+      client.on('message.getList', handleEvent);
+      client.on('message.delivered', handleEvent);
+      client.on('message.send', handleEvent);
+      let channelList = await client.channel.queryChannels({
+        page: 1,
+        size: 100
+      })
+      let msg = await client.message.getMessageList({
+        page: 1,
+        size: 1,
+      }, groupId);
+    } catch (error) {
+      console.log(error)
+    }
+  }
+  getClientFun()
+})
+
 watch(() => end.value, async (val) => {
   if (val.hasDoor && val.hasKey) {
     await delay(200)
     isSuccess.value = true
   }
-}, {deep: true})
+}, { deep: true })
 </script>
 
 <template>
@@ -254,22 +330,26 @@ watch(() => end.value, async (val) => {
     <div class="player-info">
       <div class="player">
         <img src="./assets/images/player.png" alt="">
+        <div class="msg" v-show="msgContent">
+          <img src="./assets/images/meme/box.svg" alt="" class="box">
+          <img :src="`/src/assets/images/meme/E${msgContent}.svg`" alt="" class="icon">
+        </div>
       </div>
       <div class="info">
         <div class="item">
           <div class="key">FIRE</div>
           <div class="value">
             <div class="bar">
-              <div class="mp" :style="{width: (player.mp * 5) + '%'}"></div>
+              <div class="mp" :style="{ width: (player.mp * 5) + '%' }"></div>
             </div>
-            <div class="count">{{player.mp}}</div>
+            <div class="count">{{ player.mp }}</div>
           </div>
         </div>
         <div class="item">
           <div class="key">HP</div>
           <div class="value">
             <div class="bar">
-              <div class="hp" :style="{width: Math.floor((player.hp / player.max) * 100) + '%'}"></div>
+              <div class="hp" :style="{ width: Math.floor((player.hp / player.max) * 100) + '%' }"></div>
             </div>
             <div class="count">{{ player.hp }}</div>
           </div>
@@ -325,7 +405,7 @@ watch(() => end.value, async (val) => {
     </div>
     <div v-show="isHome" class="home">
       <div class="home-hd">
-        <img v-for="(item,index) in hpList" :key="index" src="./assets/images/hp.png" alt="">
+        <img v-for="(item, index) in hpList" :key="index" src="./assets/images/hp.png" alt="">
       </div>
       <div class="home-bd">
         <div class="bd-l">
@@ -371,11 +451,16 @@ watch(() => end.value, async (val) => {
     <div v-show="isBuild" class="build wrap">
       <div class="build-content">
         <div class="list">
-          <img src="./assets/images/img1.png" alt="" @click="() => selectList[0] = !selectList[0]" :style="{border: selectList[0] ? '5px solid #F00' : 'none'}">
-          <img src="./assets/images/img2.png" alt="" @click="() => selectList[1] = !selectList[1]" :style="{border: selectList[1] ? '5px solid #F00' : 'none'}">
-          <img src="./assets/images/img3.png" alt="" @click="() => selectList[2] = !selectList[2]" :style="{border: selectList[2] ? '5px solid #F00' : 'none'}">
-          <img src="./assets/images/img1.png" alt="" @click="() => selectList[3] = !selectList[3]" :style="{border: selectList[3] ? '5px solid #F00' : 'none'}">
-          <img src="./assets/images/img2.png" alt="" @click="() => selectList[4] = !selectList[4]" :style="{border: selectList[4] ? '5px solid #F00' : 'none'}">
+          <img src="./assets/images/img1.png" alt="" @click="() => selectList[0] = !selectList[0]"
+            :style="{ border: selectList[0] ? '5px solid #F00' : 'none' }">
+          <img src="./assets/images/img2.png" alt="" @click="() => selectList[1] = !selectList[1]"
+            :style="{ border: selectList[1] ? '5px solid #F00' : 'none' }">
+          <img src="./assets/images/img3.png" alt="" @click="() => selectList[2] = !selectList[2]"
+            :style="{ border: selectList[2] ? '5px solid #F00' : 'none' }">
+          <img src="./assets/images/img1.png" alt="" @click="() => selectList[3] = !selectList[3]"
+            :style="{ border: selectList[3] ? '5px solid #F00' : 'none' }">
+          <img src="./assets/images/img2.png" alt="" @click="() => selectList[4] = !selectList[4]"
+            :style="{ border: selectList[4] ? '5px solid #F00' : 'none' }">
         </div>
         <div class="btn" @click="selectFun">select</div>
       </div>
@@ -389,5 +474,6 @@ watch(() => end.value, async (val) => {
         <div class="btn" @click="() => modalContent = ''">Ok</div>
       </div>
     </div>
+    <Meme v-if="clientData" @sendMsg="sendMsg" />
   </div>
 </template>
