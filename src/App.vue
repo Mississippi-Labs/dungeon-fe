@@ -332,7 +332,7 @@ watch(() => end.value, async (val) => {
         <img src="./assets/images/player.png" alt="">
         <div class="msg" v-show="msgContent">
           <img src="./assets/images/meme/box.svg" alt="" class="box">
-          <img :src="`/src/assets/images/meme/E${msgContent}.svg`" alt="" class="icon">
+          <img :src="`/meme/E${msgContent}.svg`" alt="" class="icon">
         </div>
       </div>
       <div class="info">
