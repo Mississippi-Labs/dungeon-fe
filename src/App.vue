@@ -3,8 +3,10 @@ import { map } from './utils/generateMap'
 import { ref, onMounted, watch } from 'vue';
 import { delay } from './utils/utils'
 import Meme from './components/Meme.vue'
-import { getUserPublicProfileRequest } from '@web3mq/client';
 import { getClient } from './utils/client';
+
+const rows = 5;
+const columns = 6;
 
 const mapData = ref(null)
 const pack = ref([])
@@ -13,7 +15,7 @@ const isLoading = ref(false)
 const isSuccess = ref(false)
 const isHome = ref(true)
 const isBuild = ref(false)
-const selectList = ref([true, true, true, true, true])
+const selectList = ref([true, true, true, true])
 const hpList = ref([true, true, true, true, true])
 const modalContent = ref('')
 const clientData = ref(null)
@@ -26,25 +28,25 @@ const end = ref({
 const monster = ref({
   A: {
     name: 'A',
-    hp: 40,
-    mp: 20,
-    atk: 14,
-    def: 12
+    hp: 8,
+    mp: 4,
+    atk: 6,
+    def: 4
   },
   B: {
     name: 'B',
-    hp: 50,
-    mp: 10,
-    atk: 12,
-    def: 16
+    hp: 10,
+    mp: 2,
+    atk: 4,
+    def: 6
   }
 })
 const player = ref({
-  hp: 100,
-  max: 100,
+  hp: 20,
+  max: 20,
   mp: 20,
-  atk: 20,
-  def: 20,
+  atk: 4,
+  def: 4,
   x: 0,
   y: 0,
   pack: []
@@ -67,7 +69,7 @@ const battle = (mon) => {
       playerCount = 0
     }
   }
-  player.value.hp = playerHp
+  player.value.hp = playerHp.toFixed(0)
   if (playerHp <= 0) {
     home()
     modalContent.value = 'Game over'
@@ -75,61 +77,80 @@ const battle = (mon) => {
   }
 }
 
-const open = async (i, j) => {
+const getAccets = async (i, j) => {
+  if (hasMonster(i, j) && mapData.value[i][j].name != 'A' && mapData.value[i][j].name != 'B') {
+    modalContent.value = 'Please defeat the Guardian first'
+    return
+  }
   if (isLoading.value) {
     return
   }
   isLoading.value = true
   await delay(500)
   isLoading.value = false
-  mapData.value[i][j].open = true
-  if (player.value.mp > 0) {
-    player.value.mp--
-  } else {
-    player.value.hp -= 5
+  let item = mapData.value[i][j].name
+  if (item == 'A' || item == 'B') {
+    battle(monster.value[item])
+    if (player.value.hp <= 0) {
+      return
+    }
   }
-  let name = mapData.value[i][j].name
-  if (name == 'A') {
-    // 战斗
-    let mon = monster.value.A
-    battle(mon)
-  } else if (name == 'B') {
-    let mon = monster.value.B
-    battle(mon)
-  } else if (name == '火') {
-    // 加火属性
-    if (pack.value.findIndex(item => item.name == '火') == -1) {
+  if (item == '火' || item == '宝' || item == '铁' || item == '钥') {
+    let index = pack.value.findIndex(item => item.name == mapData.value[i][j].name)
+    if (index > -1) {
+      pack.value[index].count++
+    } else {
       pack.value.push({
-        name: '火',
+        name: mapData.value[i][j].name,
         count: 1
       })
-    } else {
-      pack.value[pack.value.findIndex(item => item.name == '火')].count++
     }
-  } else if (name == '宝') {
-    // 加宝石
-    if (pack.value.findIndex(item => item.name == '宝') == -1) {
-      pack.value.push({
-        name: '宝',
-        count: 1
-      })
+  }
+  if (item == '门') {
+    // end.value.hasDoor = true
+    if (pack.value.find(item => item.name == '钥')) {
+      pack.value.splice(pack.value.findIndex(item => item.name == '钥'), 1)
+      isSuccess.value = true
     } else {
-      pack.value[pack.value.findIndex(item => item.name == '宝')].count++
+      modalContent.value = 'No key'
+      return
     }
-  } else if (name == '铁') {
-    // 加铁
-    if (pack.value.findIndex(item => item.name == '铁') == -1) {
-      pack.value.push({
-        name: '铁',
-        count: 1
-      })
+  }
+  if (item == '钥') {
+    // end.value.hasKey = true
+  }
+  mapData.value[i][j].name = '空'
+}
+
+const hasMonster = (i, j) => {
+  let neighbors = getNeighbors({ row: i, column: j }, rows, columns);
+  return neighbors.some((item) => {
+    return (mapData.value[item.row][item.column].name == 'A' || mapData.value[item.row][item.column].name == 'B') && mapData.value[item.row][item.column].open
+  })
+}
+
+const open = async (i, j, init) => {
+  if (init) {
+    mapData.value[i][j].open = true
+    return
+  } else {
+    // 判断九宫格内是否有A或者B并且被打开
+    if (hasMonster(i, j)) {
+      modalContent.value = 'Please defeat the Guardian first'
+      return
+    }
+    if (isLoading.value) {
+      return
+    }
+    isLoading.value = true
+    await delay(500)
+    isLoading.value = false
+    mapData.value[i][j].open = true
+    if (player.value.mp > 0) {
+      player.value.mp--
     } else {
-      pack.value[pack.value.findIndex(item => item.name == '铁')].count++
+      player.value.hp -= 5
     }
-  } else if (name == '门') {
-    end.value.hasDoor = true
-  } else if (name == '钥') {
-    end.value.hasKey = true
   }
 }
 
@@ -151,7 +172,7 @@ const upgrade = async () => {
     isLoading.value = true
     await delay(500)
     isLoading.value = false
-    player.value.atk += 10
+    player.value.atk += 2
     pack.value[pack.value.findIndex(item => item.name == '宝')].count -= 2
     pack.value[pack.value.findIndex(item => item.name == '铁')].count -= 2
     if (pack.value[pack.value.findIndex(item => item.name == '宝')].count == 0) {
@@ -204,6 +225,14 @@ const init = () => {
   })
   end.value.hasDoor = false
   end.value.hasKey = false
+  pack.value.splice(pack.value.findIndex(item => item.name == '钥'), 1)
+  const randomPoint = generateRandomPoint(rows, columns);
+  let neighbors = getNeighbors(randomPoint, rows, columns);
+  console.log(randomPoint, neighbors)
+  open(randomPoint.row, randomPoint.column, 'init')
+  neighbors.forEach((item) => {
+    open(item.row, item.column, 'init')
+  })
 }
 
 const next = async () => {
@@ -241,8 +270,8 @@ const selectFun = async () => {
   isLoading.value = true
   await delay(500)
   hpList.value = selectList.value.filter(item => item)
-  player.value.hp = hpList.value.length * 20
-  player.value.max = hpList.value.length * 20
+  player.value.hp = hpList.value.length * 5
+  player.value.max = hpList.value.length * 5
   isLoading.value = false
   isBuild.value = false
 }
@@ -262,6 +291,41 @@ const showMsg = async (msg) => {
   setTimeout(() => {
     msgContent.value = ''
   }, 6000)
+}
+
+const getRandomInt = (max) => {
+  return Math.floor(Math.random() * max);
+}
+
+const generateRandomPoint = (rows, columns) => {
+  const randomRow = getRandomInt(rows);
+  const randomColumn = getRandomInt(columns);
+
+  return { row: randomRow, column: randomColumn };
+}
+
+const getNeighbors = (point, rows, columns) => {
+  const { row, column } = point;
+  const neighbors = [];
+
+  // 上
+  if (row > 0) {
+    neighbors.push({ row: row - 1, column });
+  }
+  // 下
+  if (row < rows - 1) {
+    neighbors.push({ row: row + 1, column });
+  }
+  // 左
+  if (column > 0) {
+    neighbors.push({ row, column: column - 1 });
+  }
+  // 右
+  if (column < columns - 1) {
+    neighbors.push({ row, column: column + 1 });
+  }
+
+  return neighbors;
 }
 
 onMounted(() => {
@@ -380,15 +444,16 @@ watch(() => end.value, async (val) => {
         <div class="cols" v-for="(item, index) in mapData" :key="index">
           <div class="cols-item" v-for="(e, j) in item" :key="j">
             <div v-if="e.open">
-              <img v-if="e.name == 'A'" src="./assets/images/monster0.png" alt="">
-              <img v-if="e.name == 'B'" src="./assets/images/monster1.png" alt="">
-              <img v-if="e.name == '火'" src="./assets/images/fire.png" alt="">
-              <img v-if="e.name == '宝'" src="./assets/images/gem.png" alt="">
-              <img v-if="e.name == '铁'" src="./assets/images/iron.png" alt="">
-              <img v-if="e.name == '门'" src="./assets/images/door.png" alt="">
-              <img v-if="e.name == '钥'" src="./assets/images/key.png" alt="">
+              <img v-if="e.name == 'A'" src="./assets/images/monster0.png" alt="" @click="getAccets(index, j)">
+              <img v-else-if="e.name == 'B'" src="./assets/images/monster1.png" alt="" @click="getAccets(index, j)">
+              <img v-else-if="e.name == '火'" src="./assets/images/fire.png" alt="" @click="getAccets(index, j)" :style="{border: hasMonster(index, j) ? '5px solid #F00' : 'none'}">
+              <img v-else-if="e.name == '宝'" src="./assets/images/gem.png" alt="" @click="getAccets(index, j)" :style="{border: hasMonster(index, j) ? '5px solid #F00' : 'none'}">
+              <img v-else-if="e.name == '铁'" src="./assets/images/iron.png" alt="" @click="getAccets(index, j)" :style="{border: hasMonster(index, j) ? '5px solid #F00' : 'none'}">
+              <img v-else-if="e.name == '门'" src="./assets/images/door.png" alt="" @click="getAccets(index, j)" :style="{border: hasMonster(index, j) ? '5px solid #F00' : 'none'}">
+              <img v-else-if="e.name == '钥'" src="./assets/images/key.png" alt="" @click="getAccets(index, j)" :style="{border: hasMonster(index, j) ? '5px solid #F00' : 'none'}">
+              <img v-else src="./assets/images/empty.png" alt="">
             </div>
-            <div v-else style="cursor: pointer;" @click="open(index, j)"><img src="./assets/images/wall.png" alt=""></div>
+            <div v-else style="cursor: pointer;" @click="open(index, j)"><img src="./assets/images/wall.png" alt="" :style="{border: hasMonster(index, j) ? '5px solid #F00' : 'none'}"></div>
           </div>
         </div>
       </div>
@@ -398,6 +463,7 @@ watch(() => end.value, async (val) => {
         <img v-if="e.name == '火'" src="./assets/images/fire.png" alt="" @click="recover">
         <img v-if="e.name == '宝'" src="./assets/images/gem.png" alt="" @click="() => showUpgrade = true">
         <img v-if="e.name == '铁'" src="./assets/images/iron.png" alt="" @click="() => showUpgrade = true">
+        <img v-if="e.name == '钥'" src="./assets/images/key.png" alt="" @click="() => showUpgrade = true">
         <div class="count">{{ e.count }}</div>
       </div>
       <div class="pack-item" v-for="i in (10 - pack.length)"></div>
@@ -459,8 +525,6 @@ watch(() => end.value, async (val) => {
             :style="{ border: selectList[2] ? '5px solid #F00' : 'none' }">
           <img src="./assets/images/img1.png" alt="" @click="() => selectList[3] = !selectList[3]"
             :style="{ border: selectList[3] ? '5px solid #F00' : 'none' }">
-          <img src="./assets/images/img2.png" alt="" @click="() => selectList[4] = !selectList[4]"
-            :style="{ border: selectList[4] ? '5px solid #F00' : 'none' }">
         </div>
         <div class="btn" @click="selectFun">select</div>
       </div>
